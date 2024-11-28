@@ -6,10 +6,12 @@ using UnityEngine.UI;
 public class GameView : MonoBehaviour
 {
     [SerializeField] private Button _menuButton;
+    [SerializeField] private Button _buyButton;
     
     private ScreenVisabilityHandler _screenVisabilityHandler;
 
     public event Action MenuOpened;
+    public event Action BuyClicked;
     
     private void Awake()
     {
@@ -19,11 +21,13 @@ public class GameView : MonoBehaviour
     private void OnEnable()
     {
         _menuButton.onClick.AddListener(OnMenuClicked);
+        _buyButton.onClick.AddListener(OnBuyClicked);
     }
 
     private void OnDisable()
     {
         _menuButton.onClick.RemoveListener(OnMenuClicked);
+        _buyButton.onClick.RemoveListener(OnBuyClicked);
     }
 
     public void SetTransparent()
@@ -41,5 +45,11 @@ public class GameView : MonoBehaviour
         _screenVisabilityHandler.DisableScreen();
     }
 
+    public bool CheckEnablement()
+    {
+        return _screenVisabilityHandler.IsTransparent;
+    }
+
     private void OnMenuClicked() => MenuOpened?.Invoke();
+    private void OnBuyClicked() => BuyClicked?.Invoke();
 }

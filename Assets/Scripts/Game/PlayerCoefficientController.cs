@@ -8,7 +8,7 @@ public class PlayerCoefficientController : MonoBehaviour
 {
     private const float InitCoefficient = 2f;
     private const float MinCoefficient = 1.1f;
-    private const float MaxCoefficient = 100.0f;
+    private const float MaxCoefficient = 50.0f;
 
     [SerializeField] private Button _button11;
     [SerializeField] private Button _button12;
@@ -19,7 +19,6 @@ public class PlayerCoefficientController : MonoBehaviour
     private float _currentCoefficient;
 
     public float CurrentCoefficient => _currentCoefficient;
-    public float MaxPossibleCoefficient => MaxCoefficient;
 
     private void OnEnable()
     {

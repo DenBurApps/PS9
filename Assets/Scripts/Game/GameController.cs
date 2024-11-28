@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
@@ -8,11 +7,10 @@ using Random = UnityEngine.Random;
 public class GameController : MonoBehaviour
 {
     [SerializeField] private PlayField _playField;
-    [SerializeField] private float growthSpeed = 0.01f;
+    [SerializeField] private float growthSpeed = 1.0f;
     [SerializeField] private PlayerBalanceController _playerBalanceController;
     [SerializeField] private PlayerCoefficientController _playerCoefficientController;
     [SerializeField] private Button _makeBetButton;
-    [SerializeField] private Button _cashOutButton;
     [SerializeField] private BetController _betController;
     [SerializeField] private CoefficientHolder _coefficientHolder;
     [SerializeField] private TopWinsPlane _topWinsPlane;
@@ -21,16 +19,16 @@ public class GameController : MonoBehaviour
     [SerializeField] private AudioSource _winSound;
     [SerializeField] private AudioSource _loseSound;
     [SerializeField] private SettingsScreen _settingsScreen;
-    
-    private float _initialMultiplier = 1.0f;
+    [SerializeField] private BuyScreen _buyScreen;
+
+    private float _initialMultiplier = 0f;
     private bool _isCrashed = false;
     private bool _betPlaced = false;
-    private bool _manualCashOut = false;
     private int _currentPlayerBet;
-    private float _toleranceRange = 0.05f;
+    private bool _fromSettings = false;
 
-    private IEnumerator _countdownCoroutine;
-    private IEnumerator _gameCoroutine;
+    private Coroutine _countdownCoroutine;
+    private Coroutine _gameCoroutine;
 
     public event Action MenuOpened;
 
@@ -38,65 +36,61 @@ public class GameController : MonoBehaviour
     {
         _makeBetButton.onClick.AddListener(PlaceBet);
         _notEnoughScreen.CloseButtonClicked += ResetGame;
-        
-        _cashOutButton.onClick.AddListener(CashOut);
+        _notEnoughScreen.BuyButtonClicked += OnBuyCrystalsClicked;
 
+        _view.BuyClicked += OnBuyCrystalsClicked;
         _view.MenuOpened += OnMenuClicked;
-        _settingsScreen.BackButtonClicked += ContinueGame;
-        _settingsScreen.WindowOpened += _view.Diasble;
-        _settingsScreen.SettingsOpen += _view.SetTransparent;
+        _settingsScreen.BackButtonClicked += CheckEnablement;
+        _settingsScreen.WindowOpened += ValidateDisable;
+        _settingsScreen.SettingsOpen += ValidateSetTransparent;
     }
 
     private void OnDisable()
     {
         _makeBetButton.onClick.RemoveListener(PlaceBet);
         _notEnoughScreen.CloseButtonClicked -= ResetGame;
-        
-        _cashOutButton.onClick.RemoveListener(CashOut);
-        
+        _notEnoughScreen.BuyButtonClicked -= OnBuyCrystalsClicked;
+
+        _view.BuyClicked -= OnBuyCrystalsClicked;
         _view.MenuOpened -= OnMenuClicked;
-        _settingsScreen.BackButtonClicked -= ContinueGame;
-        _settingsScreen.WindowOpened -= _view.Diasble;
-        _settingsScreen.SettingsOpen -= _view.SetTransparent;
+        _settingsScreen.BackButtonClicked -= CheckEnablement;
+        _settingsScreen.WindowOpened -= ValidateDisable;
+        _settingsScreen.SettingsOpen -= ValidateSetTransparent;
     }
 
     private void Start()
     {
-        StartCountdown();
-        ValidateInput();
+        ResetGame();
+    }
+
+    private void ValidateSetTransparent()
+    {
+        if (!_fromSettings)
+            return;
+
+        _view.SetTransparent();
+    }
+
+    private void ValidateDisable()
+    {
+        if (!_fromSettings)
+            return;
+
+        _view.Diasble();
     }
 
     private void StartCountdown()
     {
-        StopCountdown();
+        if (_countdownCoroutine != null) StopCoroutine(_countdownCoroutine);
 
-        _countdownCoroutine = CountdownCoroutine();
-        StartCoroutine(_countdownCoroutine);
-    }
-
-    private void StopCountdown()
-    {
-        if (_countdownCoroutine != null)
-        {
-            StopCoroutine(_countdownCoroutine);
-            _countdownCoroutine = null;
-        }
+        _countdownCoroutine = StartCoroutine(CountdownCoroutine());
     }
 
     private void StartGame()
     {
-        StopGame();
-        _gameCoroutine = IncreaseMultiplierCoroutine();
-        StartCoroutine(_gameCoroutine);
-    }
+        if (_gameCoroutine != null) StopCoroutine(_gameCoroutine);
 
-    private void StopGame()
-    {
-        if (_gameCoroutine != null)
-        {
-            StopCoroutine(_gameCoroutine);
-            _gameCoroutine = null;
-        }
+        _gameCoroutine = StartCoroutine(IncreaseMultiplierCoroutine());
     }
 
     private void PlaceBet()
@@ -105,8 +99,6 @@ public class GameController : MonoBehaviour
         {
             _notEnoughScreen.Enable();
             _view.SetTransparent();
-            StopCountdown();
-            StopGame();
             return;
         }
 
@@ -123,16 +115,6 @@ public class GameController : MonoBehaviour
         _betController.ToggleAllButtons(buttonsInteractable);
         _playerCoefficientController.ToggleAllButtons(buttonsInteractable);
         _makeBetButton.interactable = buttonsInteractable;
-        _cashOutButton.gameObject.SetActive(_betPlaced);
-    }
-    
-    private void CashOut()
-    {
-        if (_betPlaced && !_isCrashed)
-        {
-            _manualCashOut = true;
-            ProcessWin(_playerCoefficientController.CurrentCoefficient);
-        }
     }
 
     private IEnumerator CountdownCoroutine()
@@ -146,10 +128,7 @@ public class GameController : MonoBehaviour
             yield return interval;
             countdown--;
 
-            if (_betPlaced)
-            {
-                break;
-            }
+            if (_betPlaced) break;
         }
 
         StartGame();
@@ -161,43 +140,14 @@ public class GameController : MonoBehaviour
         _playField.StartRotating();
         _isCrashed = false;
 
-        while (!_isCrashed && currentMultiplier < _playerCoefficientController.MaxPossibleCoefficient)
+        while (!_isCrashed)
         {
-            currentMultiplier += Time.deltaTime * growthSpeed;
+            currentMultiplier += growthSpeed * Time.deltaTime;
             _playField.SetCoefficient(currentMultiplier);
-            
-            if (_manualCashOut)
-            {
-                ProcessWin(currentMultiplier);
-                yield break;
-            }
-            
-            /*if (_betPlaced && Mathf.Abs(currentMultiplier - _playerCoefficientController.CurrentCoefficient) <= _toleranceRange)
-            {
-                ProcessWin(currentMultiplier);
-                StopGame();
-                yield break;
-            }*/
-            
+
             if (ShouldCrash(currentMultiplier))
             {
-                if (_betPlaced)
-                {
-                    _isCrashed = true;
-                    _playField.StopRotating();
-                    _coefficientHolder.EnableElement(currentMultiplier);
-                    ProcessLoss();
-                }
-                else
-                {
-                    _isCrashed = true;
-                    _playField.StopRotating();
-                    _coefficientHolder.EnableElement(currentMultiplier);
-                    _playField.ReturnToDefaultRotation();
-                    ResetGame();
-                }
-
-                StopGame();
+                HandleCrash(currentMultiplier);
                 yield break;
             }
 
@@ -207,56 +157,140 @@ public class GameController : MonoBehaviour
 
     private bool ShouldCrash(float currentMultiplier)
     {
-        float baseCrashProbability = Mathf.Clamp01(0.005f * Mathf.Pow(currentMultiplier - 1f, 1.05f));
+        const float graceMultiplier = 0.3f;
+        const float baseCrashProbability = 0.005f;
+        const float probabilityGrowthRate = 1.0f;
+        const float maxCrashProbability = 0.95f;
 
-        return Random.value < baseCrashProbability;
+        if (currentMultiplier < graceMultiplier)
+            return false;
+
+        float adjustedMultiplier = currentMultiplier - graceMultiplier;
+        float crashProbability =
+            Mathf.Clamp01(baseCrashProbability * Mathf.Pow(adjustedMultiplier, probabilityGrowthRate));
+
+        crashProbability = Mathf.Min(crashProbability, maxCrashProbability);
+
+        return Random.value < crashProbability;
+    }
+
+    private void HandleCrash(float currentMultiplier)
+    {
+        if (_betPlaced)
+        {
+            if (currentMultiplier >= _playerCoefficientController.CurrentCoefficient)
+            {
+                ProcessWin(currentMultiplier);
+            }
+            else
+            {
+                ProcessLoss();
+            }
+        }
+
+        _isCrashed = true;
+        _playField.StopRotating();
+        _coefficientHolder.EnableElement(currentMultiplier);
+        _playField.ReturnToDefaultRotation();
+        ResetGame();
     }
 
     private void ProcessWin(float winMultiplier)
     {
         int winnings = Mathf.RoundToInt(_currentPlayerBet * winMultiplier);
         _playerBalanceController.IncreaseBalance(winnings);
+
         _playField.ToggleWinImage(true);
         ValidateInput();
 
-        var winData = new WinData(_playerBalanceController.Balance.ToString(),
-            _betController.CurrentBet.ToString(), winMultiplier.ToString("F1"));
-        
+        var winData = new WinData(
+            _playerBalanceController.Balance.ToString(),
+            _currentPlayerBet.ToString(),
+            winMultiplier.ToString("F1")
+        );
+
         _topWinsPlane.EnableElement(winData);
-        _coefficientHolder.EnableElement(winMultiplier);
         _winSound.Play();
-        StopGame();
-        ResetGame();
+
+        //  ResetGame();
     }
 
     private void ProcessLoss()
     {
         _playField.ToggleLoseImage(true);
         _loseSound.Play();
-        ResetGame();
+        //  ResetGame();
     }
 
     private void ResetGame()
     {
+        StopCountdown();
+        StopGame();
+
         _betPlaced = false;
-        _manualCashOut = false;
+        _isCrashed = false;
         ValidateInput();
         StartCountdown();
         _view.Enable();
     }
 
+    private void StopCountdown()
+    {
+        if (_countdownCoroutine != null)
+        {
+            StopCoroutine(_countdownCoroutine);
+            _countdownCoroutine = null;
+        }
+    }
+
+    private void StopGame()
+    {
+        if (_gameCoroutine != null)
+        {
+            StopCoroutine(_gameCoroutine);
+            _gameCoroutine = null;
+        }
+    }
+
     private void OnMenuClicked()
     {
         MenuOpened?.Invoke();
+        _fromSettings = true;
         _view.SetTransparent();
         StopCountdown();
         StopGame();
     }
 
-    private void ContinueGame()
+    private void OnBuyCrystalsClicked()
+    {
+        _buyScreen.Enable();
+        _view.Diasble();
+        StopCountdown();
+        StopGame();
+    }
+
+    private void CheckEnablement()
+    {
+        if (!_fromSettings)
+            return;
+
+        _view.Enable();
+        _fromSettings = false;
+
+        if (_gameCoroutine != null)
+        {
+            StartGame();
+        }
+        else
+        {
+            StartCountdown();
+        }
+    }
+
+    public void ContinueGame()
     {
         _view.Enable();
-        
+
         if (_gameCoroutine != null)
         {
             StartGame();

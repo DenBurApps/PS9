@@ -11,9 +11,9 @@ public class SettingsScreen : MonoBehaviour
     [SerializeField] private PrivacyPolicyView _privacyPolicyView;
     [SerializeField] private TermsOfUseView _termsOfUseView;
     [SerializeField] private GameController _gameController;
+    [SerializeField] private BuyScreen _buyScreen;
     
-    private string _email = "w63044073@gmail.com";
-
+    private string _email = "maisiehughes145@outlook.com";
     public event Action BackButtonClicked;
     public event Action WindowOpened;
     public event Action SettingsOpen;
@@ -38,6 +38,7 @@ public class SettingsScreen : MonoBehaviour
         _termsOfUseView.BackButtonClicked += ShowScreen;
         
         _gameController.MenuOpened += ShowScreen;
+        _buyScreen.ShowMenu += ShowScreen;
     }
 
     private void OnDisable()
@@ -55,6 +56,7 @@ public class SettingsScreen : MonoBehaviour
         _termsOfUseView.BackButtonClicked -= ShowScreen;
         
         _gameController.MenuOpened -= ShowScreen;
+        _buyScreen.ShowMenu -= ShowScreen;
     }
 
     private void ProcessBackButtonClicked()

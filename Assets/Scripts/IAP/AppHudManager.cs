@@ -11,9 +11,11 @@ public class AppHudManager : MonoBehaviour
     private int _currentIndex;
     public Action<int> PurchaseComplete;
 
+    public event Action InitializationFailed;
+    public event Action PurchaseFailed;
+
     void Start()
     {
-        
         // Инициализация AppHud
         ApphudSDK.Start("app_LwrNMNxwh5F9KfyfB4GHpBRdC9jeHK", OnApphudInitialize);
     }
@@ -28,6 +30,7 @@ public class AppHudManager : MonoBehaviour
         if(error != null)
         {
             Debug.Log(error.Message);
+            InitializationFailed?.Invoke();
             return;
         }
         _apphudProducts.Clear();
@@ -44,12 +47,13 @@ public class AppHudManager : MonoBehaviour
     {
         if (purchase != null)
         {
-            Debug.Log($"Purchase successful: {purchase.Transaction}");
+            Debug.Log($"Purchase successful");
             // Обработка успешной покупки
             PurchaseComplete?.Invoke(_currentIndex);
         }
         else
         {
+            PurchaseFailed?.Invoke();
             Debug.Log("Purchase failed");
         }
     }
