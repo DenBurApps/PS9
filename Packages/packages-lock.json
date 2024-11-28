@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.apphud.unity.sdk": {
-      "version": "file:D:/DenBurApps Unity assets/com.apphud.unity.sdk-1.2.0.tgz",
+      "version": "file:../com.apphud.unity.sdk-1.2.0.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {

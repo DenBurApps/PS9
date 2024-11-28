@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.apphud.unity.sdk": "file:D:/DenBurApps Unity assets/com.apphud.unity.sdk-1.2.0.tgz",
+    "com.apphud.unity.sdk": "file:../com.apphud.unity.sdk-1.2.0.tgz",
     "com.nobi.roundedcorners": "https://github.com/kirevdokimov/Unity-UI-Rounded-Corners.git",
     "com.unity.collab-proxy": "2.5.2",
     "com.unity.feature.2d": "2.0.0",
