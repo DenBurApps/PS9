@@ -47,6 +47,7 @@ workflows:
           cd $UNITY_IOS_DIR
           pod init
           pod deintegrate
+          pod install
       - name: Build the project
         script: | 
           xcode-project build-ipa \
