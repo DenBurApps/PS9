@@ -20,7 +20,7 @@ public class PlayerBalanceController : MonoBehaviour
 
     private void Start()
     {
-        //LoadBalanceData();
+        LoadBalanceData();
         _currentBalance = InitBalance;
         UpdateBalanceText();
     }
